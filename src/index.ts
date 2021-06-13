@@ -24,6 +24,12 @@ export type NotarizeCredentials = NotarizePasswordCredentials | NotarizeApiKeyCr
 export interface NotarizeAppOptions {
   appPath: string;
   appBundleId: string;
+  lifecycle?: LifecycleOptions;
+}
+
+export interface LifecycleOptions {
+  beforeUpload?: () => Promise<void> | void;
+  afterUpload?: () => Promise<void> | void;
 }
 
 export interface TransporterOptions {
@@ -66,8 +72,14 @@ export async function startNotarize(opts: NotarizeStartOptions): Promise<Notariz
         `Failed to zip application, exited with code: ${zipResult.code}\n\n${zipResult.output}`,
       );
     }
-    d('zip succeeded, attempting to upload to Apple');
+    d('zip succeeded');
 
+    if (opts.lifecycle?.beforeUpload) {
+      d('awaiting beforeUpload lifecycle hook');
+      await opts.lifecycle?.beforeUpload();
+    }
+
+    d('attempting to upload to Apple');
     const notarizeArgs = [
       'altool',
       '--notarize-app',
@@ -94,6 +106,11 @@ export async function startNotarize(opts: NotarizeStartOptions): Promise<Notariz
     }
 
     d('found UUID:', uuidMatch[1]);
+
+    if (opts.lifecycle?.afterUpload) {
+      d('awaiting afterUpload lifecycle hook');
+      await opts.lifecycle?.afterUpload();
+    }
 
     return {
       uuid: uuidMatch[1],
