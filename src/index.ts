@@ -58,9 +58,13 @@ export async function startNotarize(opts: NotarizeStartOptions): Promise<Notariz
   return await withTempDir<NotarizeResult>(async dir => {
     const zipPath = path.resolve(dir, `${path.basename(opts.appPath, '.app')}.zip`);
     d('zipping application to:', zipPath);
-    const zipResult = await spawn('zip', ['-r', '-y', zipPath, path.basename(opts.appPath)], {
-      cwd: path.dirname(opts.appPath),
-    });
+    const zipResult = await spawn(
+      'ditto',
+      ['-c', '-k', '--sequesterRsrc', '--keepParent', path.basename(opts.appPath), zipPath],
+      {
+        cwd: path.dirname(opts.appPath),
+      },
+    );
     if (zipResult.code !== 0) {
       throw new Error(
         `Failed to zip application, exited with code: ${zipResult.code}\n\n${zipResult.output}`,
